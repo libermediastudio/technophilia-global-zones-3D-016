@@ -1,0 +1,5 @@
+{
+  "name": "Interactive Global Zones 012 (3D) GitHub! (copy 016)",
+  "description": "An interactive 3D globe visualization showing specific zones and cities with zoom and rotation capabilities using D3.js and React.",
+  "requestFramePermissions": []
+}

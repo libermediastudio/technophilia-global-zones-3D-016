@@ -1,0 +1,180 @@
+
+            const renderGlobe = useCallback((context) => {
+                context.clearRect(0, 0, width, height);
+                const breathing = (pulseRef.current + 1) / 2;
+                const projection = d3.geoOrthographic()
+                    .scale(scale)
+                    .translate([width / 2, height / 2 - shiftY])
+                    .rotate(rotation)
+                    .clipAngle(config.id === 'belt' ? null : 90);
+
+                const path = d3.geoPath(projection, context);
+                const center = [width / 2, height / 2 - shiftY];
+
+                context.fillStyle = '#121212';
+                context.fillRect(0, 0, width, height);
+
+                starfield.forEach(star => {
+                    const x = (star.x - rotation[0] * 2) % width;
+                    const finalX = x < 0 ? x + width : x;
+                    context.fillStyle = '#64748b';
+                    context.globalAlpha = star.opacity * 0.5;
+                    context.fillRect(finalX, star.y % height, 2, 2);
+                });
+                context.globalAlpha = 1.0;
+
+                let selectedCityCoords = null;
+                let selectedCityVisible = false;
+
+                if (config.id === 'belt') {
+                    context.beginPath(); context.arc(center[0], center[1], 2, 0, 2 * Math.PI);
+                    context.fillStyle = '#E42737'; context.globalAlpha = 0.5; context.fill(); context.globalAlpha = 1.0;
+
+                    asteroidField.forEach(rock => {
+                        const coords = projection([rock.lng, rock.lat]);
+                        if (coords) {
+                            const dx = coords[0] - center[0];
+                            const dy = coords[1] - center[1];
+                            const x = center[0] + dx * rock.alt;
+                            const y = center[1] + dy * rock.alt;
+
+                            const rotator = d3.geoRotation(rotation);
+                            const [rLng, rLat] = rotator([rock.lng, rock.lat]);
+                            const isBack = Math.abs(rLng) > 90;
+
+                            context.fillStyle = rock.color;
+                            context.globalAlpha = isBack ? rock.opacity * 0.3 : rock.opacity;
+                            const drawSize = isBack ? rock.size * 0.7 : rock.size;
+                            context.fillRect(x, y, drawSize * scale * 0.005, drawSize * scale * 0.005);
+                        }
+                    });
+                    context.globalAlpha = 1.0;
+
+                    config.data.cities.forEach(city => {
+                        const cityAlt = 2.2; 
+                        const coords = projection([city.lng, city.lat]);
+                        if (coords) {
+                            const dx = coords[0] - center[0];
+                            const dy = coords[1] - center[1];
+                            const x = center[0] + dx * cityAlt;
+                            const y = center[1] + dy * cityAlt;
+                            
+                            const isHovered = hoveredItem === city;
+                            const isSelected = selectedCity?.name === city.name;
+                            
+                            if (isSelected) {
+                                selectedCityCoords = [x, y];
+                                selectedCityVisible = true;
+                            } else {
+                                context.strokeStyle = '#E42737'; context.lineWidth = 1;
+                                context.beginPath(); context.rect(x - 4, y - 4, 8, 8); context.stroke();
+                                if (isHovered) {
+                                    context.fillStyle = '#E42737'; context.fillRect(x - 2, y - 2, 4, 4);
+                                }
+                                // Show names always in belt
+                                context.font = isHovered ? "bold 11px \"Courier New\", monospace" : "9px \"Courier New\", monospace";
+                                context.fillStyle = isHovered ? '#FFFFFF' : 'rgba(255, 255, 255, 0.5)';
+                                context.fillText(city.name, x + 10, y + 4);
+                            }
+                        }
+                    });
+
+                } else {
+                    context.beginPath(); path({ type: 'Sphere' });
+                    context.fillStyle = 'rgba(18, 18, 18, 0.95)'; context.fill();
+
+                    // Apply Red Tint to non-Earth bodies
+                    if (config.id !== 'earth') {
+                        context.beginPath(); path({ type: 'Sphere' });
+                        context.fillStyle = 'rgba(228, 39, 55, 0.15)'; 
+                        context.fill();
+                    }
+
+                    const gradient = context.createRadialGradient(width / 2, height / 2 - shiftY, scale * 0.8, width / 2, height / 2 - shiftY, scale * 1.1);
+                    gradient.addColorStop(0, 'rgba(228, 39, 55, 0)'); gradient.addColorStop(0.9, 'rgba(228, 39, 55, 0.05)'); gradient.addColorStop(1, 'rgba(228, 39, 55, 0)');
+                    context.fillStyle = gradient; context.beginPath(); path({ type: 'Sphere' }); context.fill();
+                    context.beginPath(); path({ type: 'Sphere' }); context.strokeStyle = '#334155'; context.lineWidth = 2; context.stroke();
+
+                    if (config.id === 'earth' && landData) {
+                        const graticule = d3.geoGraticule().step([15, 15]);
+                        context.beginPath(); path(graticule()); context.strokeStyle = 'rgba(255, 255, 255, 0.05)'; context.lineWidth = 1; context.stroke();
+                        context.beginPath(); path(landData);
+                        context.fillStyle = 'rgba(228, 39, 55, 0.15)'; context.fill();
+                        
+                        if (config.data.routes) {
+                            context.strokeStyle = 'rgba(228, 39, 55, 0.6)'; context.lineWidth = 1.5; context.setLineDash([2, 4]);
+                            config.data.routes.forEach(route => {
+                                const c1 = config.data.cities.find(c => c.name === route.from);
+                                const c2 = config.data.cities.find(c => c.name === route.to);
+                                if (c1 && c2) {
+                                    const lineString = { type: "LineString", coordinates: [[c1.lng, c1.lat], [c2.lng, c2.lat]] };
+                                    context.beginPath(); path(lineString); context.stroke();
+                                }
+                            });
+                            context.setLineDash([]);
+                        }
+                    } else {
+                        const graticule = d3.geoGraticule().step([30, 30]);
+                        context.beginPath(); path(graticule()); 
+                        // Reddish grid
+                        context.strokeStyle = 'rgba(228, 39, 55, 0.2)'; 
+                        context.lineWidth = 1; context.stroke();
+                    }
+
+                    config.data.cities.forEach(city => {
+                        const coords = projection([city.lng, city.lat]);
+                        const r = d3.geoRotation(rotation);
+                        const isVisible = r([city.lng, city.lat])[0] > -90 && r([city.lng, city.lat])[0] < 90;
+                        if (isVisible && coords) {
+                            const isHovered = hoveredItem === city;
+                            const isSelected = selectedCity?.name === city.name;
+                            
+                            if (isSelected) {
+                                selectedCityCoords = coords;
+                                selectedCityVisible = true;
+                            } else {
+                                const size = ((isHovered) ? 6 : 2);
+                                context.fillStyle = (isHovered) ? '#FFF' : '#94a3b8';
+                                context.beginPath(); context.arc(coords[0], coords[1], size, 0, 2 * Math.PI); context.fill();
+                                if (isHovered) {
+                                    context.font = "bold 11px \"Courier New\", monospace";
+                                    const textWidth = context.measureText(city.name).width;
+                                    context.fillStyle = 'rgba(0, 0, 0, 0.8)'; context.strokeStyle = '#E42737'; context.lineWidth = 1;
+                                    context.fillRect(coords[0] + 12, coords[1] - 8, textWidth + 6, 16);
+                                    context.fillStyle = '#FFFFFF'; context.textAlign = "left"; context.fillText(city.name, coords[0] + 15, coords[1] + 3);
+                                } else {
+                                    // SHOW DIMMED LABEL
+                                    context.font = "9px \"Courier New\", monospace";
+                                    context.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                                    context.textAlign = "left"; context.fillText(city.name, coords[0] + 15, coords[1] + 3);
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // UPDATE DOM MARKER
+                if (selectedMarkerRef.current) {
+                    if (selectedCity && selectedCityVisible && selectedCityCoords) {
+                        selectedMarkerRef.current.style.display = 'flex';
+                        selectedMarkerRef.current.style.transform = `translate(${selectedCityCoords[0]}px, ${selectedCityCoords[1]}px) translate(-50%, -50%)`;
+                    } else {
+                        selectedMarkerRef.current.style.display = 'none';
+                    }
+                }
+
+                if (hoveredItem && cursorPos && hoveredItem !== selectedCity) {
+                    const x = cursorPos.x; const y = cursorPos.y;
+                    const hudX = x + 40; const hudY = y - 40;
+                    context.beginPath(); context.moveTo(x, y); context.lineTo(x + 20, y - 20); context.lineTo(hudX, y - 20); 
+                    context.strokeStyle = '#E42737'; context.lineWidth = 1; context.stroke();
+                    context.fillStyle = 'rgba(10, 10, 10, 0.85)'; context.fillRect(hudX, hudY, 180, 50);
+                    context.strokeStyle = '#E42737';
+                    context.beginPath(); context.moveTo(hudX, hudY + 10); context.lineTo(hudX, hudY); context.lineTo(hudX + 10, hudY); context.stroke();
+                    context.beginPath(); context.moveTo(hudX + 170, hudY + 50); context.lineTo(hudX + 180, hudY + 50); context.lineTo(hudX + 180, hudY + 40); context.stroke();
+                    context.fillStyle = '#FFFFFF'; context.font = "bold 12px \"Courier New\", monospace"; context.textAlign = "left"; context.textBaseline = "top";
+                    context.fillText(hoveredItem.name, hudX + 10, hudY + 8);
+                    context.fillStyle = '#E42737'; context.font = "10px \"Courier New\", monospace";
+                    context.fillText(`CORD: ${hoveredItem.lat.toFixed(2)} / ${hoveredItem.lng.toFixed(2)}`, hudX + 10, hudY + 24);
+                }
+            }, [width, height, worldData, landData, rotation, scale, config, asteroidField, starfield, hoveredItem, cursorPos, selectedCity]);
