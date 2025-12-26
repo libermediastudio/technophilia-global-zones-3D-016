@@ -42,4 +42,7 @@ export interface CelestialBodyConfig {
   description?: string;
   stats?: BodyStats;
   data: GlobeData;
+  // Texture and surface mapping URLs for high-relief tactical visualizations
+  albedoUrl?: string;
+  heightMapUrl?: string;
 }
