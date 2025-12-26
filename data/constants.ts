@@ -27,7 +27,7 @@ const EARTH_DATA: GlobeData = {
   ]
 };
 
-// Używamy publicznego proxy CORS, aby ominąć blokady serwera FTP/technophilia.world
+// Używamy publicznego proxy CORS, aby ominąć blokady serwera technophilia.world (brak nagłówków CORS)
 const PROXY = "https://corsproxy.io/?";
 const TEXTURE_BASE = `${PROXY}https://technophilia.world/wp-content/textures/solarsystem/`;
 

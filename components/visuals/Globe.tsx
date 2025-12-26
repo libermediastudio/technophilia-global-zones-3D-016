@@ -109,16 +109,16 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({
       renderer.autoClear = true;
       threeContainerRef.current.appendChild(renderer.domElement);
       
-      // Stark directional lighting to create relief shadows
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+      // Intense directional lighting from side to emphasize topographical shadows (relief)
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
       scene.add(ambientLight);
       
       const sunLight = new THREE.DirectionalLight(0xffffff, 6.0);
-      sunLight.position.set(1500, 200, 800);
+      sunLight.position.set(2000, 400, 1000);
       scene.add(sunLight);
 
-      const rimLight = new THREE.DirectionalLight(0xE42737, 2.0);
-      rimLight.position.set(-1000, 0, -500);
+      const rimLight = new THREE.DirectionalLight(0xE42737, 2.5);
+      rimLight.position.set(-1500, 0, -800);
       scene.add(rimLight);
 
       rendererRef.current = renderer;
@@ -156,18 +156,18 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({
         return;
     }
 
-    // High resolution geometry for smooth displacement maps
+    // Ultra high-res geometry for high-fidelity relief (displacement)
     const geometry = new THREE.SphereGeometry(GLOBE_RADIUS, 512, 512);
     
-    // Tactical Black & Red relief material
+    // Tactical Black & Red high-relief material
     const material = new THREE.MeshStandardMaterial({
-      color: new THREE.Color('#050505'),
+      color: new THREE.Color('#080808'),
       emissive: new THREE.Color('#E42737'),
-      emissiveIntensity: 0.05, 
-      roughness: 0.8,
-      metalness: 0.1,
-      displacementScale: 35, // High value for deep relief look
-      bumpScale: 15
+      emissiveIntensity: 0.08, 
+      roughness: 0.85,
+      metalness: 0.15,
+      displacementScale: 40, // Deep relief (topography effect)
+      bumpScale: 18
     });
 
     textureLoader.current.setCrossOrigin('anonymous');
@@ -176,13 +176,12 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({
         textureLoader.current.load(
             url,
             (tex) => {
-                console.log(`[SYSTEM] ${type} loaded for ${config.id}`);
+                console.log(`[SYSTEM] ${type} for ${config.id} successfully loaded from ${url}`);
                 if (type === 'map') {
                     tex.colorSpace = THREE.SRGBColorSpace;
-                    // Tint textures to Red/Black aesthetic
                     material.map = tex;
-                    material.color.set('#333333');
-                    material.emissiveIntensity = 0.02;
+                    material.color.set('#444444'); // Tint textures darker for tactical look
+                    material.emissiveIntensity = 0.04;
                 } else if (type === 'bumpMap') {
                     material.bumpMap = tex;
                 } else if (type === 'displacementMap') {
@@ -192,7 +191,8 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({
             },
             undefined,
             (errorEvent: any) => {
-                console.error(`[TEXTURE ERROR] ${type} for ${config.id} failed.`, errorEvent);
+                const urlClean = url.split('?')[0];
+                console.error(`[TEXTURE ERROR] ${type} load FAILED for ${config.id}. URL: ${urlClean}. PROXY used: ${url.includes('corsproxy.io')}`);
                 if (type === 'map') {
                     material.color.set('#1a1a1a'); 
                     material.emissiveIntensity = 0.15;
@@ -338,7 +338,7 @@ export const Globe = forwardRef<GlobeHandle, GlobeProps>(({
         const graticule = d3.geoGraticule().step([30, 30]);
         ctx.beginPath(); path(graticule()); ctx.strokeStyle = 'rgba(228, 39, 55, 0.15)'; ctx.stroke();
         
-        // CRITICAL FIX: Only draw land data (continents) for Terra/Earth
+        // CRITICAL FIX: Only draw Earth land data for config.id === 'earth'
         if (config.id === 'earth' && landDataRef.current) {
             ctx.beginPath(); path(landDataRef.current);
             ctx.fillStyle = 'rgba(228, 39, 55, 0.08)'; ctx.fill();

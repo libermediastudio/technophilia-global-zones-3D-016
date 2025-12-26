@@ -1,3 +1,4 @@
+
 {
   "name": "interactive-global-zones",
   "private": true,
@@ -16,13 +17,15 @@
     "react-dom": "^18.2.0",
     "topojson-client": "^3.1.0",
     "clsx": "^2.1.0",
-    "tailwind-merge": "^2.2.1"
+    "tailwind-merge": "^2.2.1",
+    "three": "0.174.0"
   },
   "devDependencies": {
     "@types/d3": "^7.4.3",
     "@types/node": "^20.0.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
+    "@types/three": "0.174.0",
     "@types/topojson-client": "^3.1.4",
     "@vitejs/plugin-react": "^4.2.1",
     "autoprefixer": "^10.4.19",
